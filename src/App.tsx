@@ -13,32 +13,44 @@ import { TodoItem } from './components/TodoItem';
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [tempTodo, setTempTodo] = useState<Todo>();
-  const [errorMessage, setErrorMessage] = useState<ErrorMessage>('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [errorMessage, setErrorMessage] = useState<ErrorMessage | ''>('');
+  const [filter, setFilter] = useState<Filter>(Filter.all);
   const [title, setTitle] = useState('');
   const [isInputDisabled, setIsInputDisabled] = useState(false);
   const [processings, setProcessings] = useState<number[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const showError = (message: ErrorMessage) => {
+    setErrorMessage(message);
+
+    if (errorTimer.current) {
+      clearTimeout(errorTimer.current);
+    }
+
+    errorTimer.current = setTimeout(() => {
+      setErrorMessage('');
+      errorTimer.current = null;
+    }, 3000);
+  };
 
   useEffect(() => {
     todoService
       .getTodos()
       .then(setTodos)
       .catch(() => {
-        setErrorMessage('Unable to load todos');
-
-        setTimeout(() => setErrorMessage(''), 3000);
+        showError(ErrorMessage.load);
       });
 
     inputRef.current?.focus();
   }, []);
 
   const filteredTodos = useMemo(() => {
-    return todos?.filter(todo => {
-      return filter === 'all'
+    return todos.filter(todo => {
+      return filter === Filter.all
         ? true
-        : filter === 'completed'
+        : filter === Filter.completed
           ? todo.completed
           : !todo.completed;
     });
@@ -67,8 +79,7 @@ export const App: React.FC = () => {
         ),
       )
       .catch(() => {
-        setErrorMessage('Unable to delete a todo');
-        setTimeout(() => setErrorMessage(''), 3000);
+        showError(ErrorMessage.delete);
       })
       .finally(() => {
         setProcessings(ids => ids.filter(id => id !== todoId));
@@ -91,11 +102,12 @@ export const App: React.FC = () => {
       .map((result, index) =>
         result.status === 'fulfilled' ? idsToDelete[index] : undefined,
       )
-      .filter(id => id !== undefined);
+      .filter((id): id is number => id !== undefined);
 
     setTodos(current =>
       current.filter(todo => !successfullyDeletedIds.includes(todo.id)),
     );
+
     setProcessings(ids =>
       ids.filter(id => !successfullyDeletedIds.includes(id)),
     );
@@ -103,23 +115,24 @@ export const App: React.FC = () => {
     const hasError = results.some(result => result.status === 'rejected');
 
     if (hasError) {
-      setErrorMessage('Unable to delete some todos');
-      setTimeout(() => setErrorMessage(''), 3000);
+      showError(ErrorMessage.delete);
     }
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const addTodo = () => {
     setErrorMessage('');
 
     if (!title.trim()) {
-      setErrorMessage('Title should not be empty');
-      setTimeout(() => setErrorMessage(''), 3000);
+      showError(ErrorMessage.empty);
 
       return Promise.resolve();
     }
 
     setIsInputDisabled(true);
-
     setProcessings(ids => [...ids, 0]);
 
     setTempTodo({
@@ -132,10 +145,10 @@ export const App: React.FC = () => {
     return todoService
       .addTodo(title.trim())
       .then(newTodo => setTodos(currentTodos => [...currentTodos, newTodo]))
-      .catch(error => {
-        setErrorMessage('Unable to add a todo');
-        setTimeout(() => setErrorMessage(''), 3000);
-        throw error;
+      .catch(() => {
+        showError(ErrorMessage.add);
+
+        return Promise.reject();
       })
       .finally(() => {
         setIsInputDisabled(false);

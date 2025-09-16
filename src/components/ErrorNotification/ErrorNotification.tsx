@@ -3,8 +3,8 @@ import React from 'react';
 import { ErrorMessage } from '../../types/ErrorMessage';
 
 type Props = {
-  errorMessage: string;
-  onClose: (message: ErrorMessage) => void;
+  errorMessage: ErrorMessage | '';
+  onClose: (message: '') => void;
 };
 
 export const ErrorNotification: React.FC<Props> = ({

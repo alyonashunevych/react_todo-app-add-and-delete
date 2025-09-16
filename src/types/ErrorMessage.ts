@@ -1,8 +1,7 @@
-export type ErrorMessage =
-  | ''
-  | 'Unable to load todos'
-  | 'Title should not be empty'
-  | 'Unable to add a todo'
-  | 'Unable to delete a todo'
-  | 'Unable to update a todo'
-  | 'Unable to delete some todos';
+export enum ErrorMessage {
+  load = 'Unable to load todos',
+  empty = 'Title should not be empty',
+  add = 'Unable to add a todo',
+  delete = 'Unable to delete a todo',
+  update = 'Unable to update a todo',
+}
